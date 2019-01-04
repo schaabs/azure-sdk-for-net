@@ -11,6 +11,8 @@
 namespace Microsoft.Azure.KeyVault.Models
 {
     using Newtonsoft.Json;
+    using System.Collections;
+    using System.Collections.Generic;
     using System.Linq;
 
     /// <summary>
@@ -36,11 +38,18 @@ namespace Microsoft.Azure.KeyVault.Models
         /// <param name="certificateTransparency">Indicates if the certificates
         /// generated under this policy should be published to certificate
         /// transparency logs.</param>
-        public IssuerParameters(string name = default(string), string certificateType = default(string), bool? certificateTransparency = default(bool?))
+        /// <param name="validationMethod">The method the issuer will use to
+        /// validate certificate creation and renewal requests. Possible values
+        /// include: 'email', 'dns-txt-token', 'http-token'</param>
+        /// <param name="validationEmails">A list of email addresses where
+        /// validation emails should be sent for specific DNS names.</param>
+        public IssuerParameters(string name = default(string), string certificateType = default(string), bool? certificateTransparency = default(bool?), string validationMethod = default(string), IList<ValidationEmail> validationEmails = default(IList<ValidationEmail>))
         {
             Name = name;
             CertificateType = certificateType;
             CertificateTransparency = certificateTransparency;
+            ValidationMethod = validationMethod;
+            ValidationEmails = validationEmails;
             CustomInit();
         }
 
@@ -69,6 +78,21 @@ namespace Microsoft.Azure.KeyVault.Models
         /// </summary>
         [JsonProperty(PropertyName = "cert_transparency")]
         public bool? CertificateTransparency { get; set; }
+
+        /// <summary>
+        /// Gets or sets the method the issuer will use to validate certificate
+        /// creation and renewal requests. Possible values include: 'email',
+        /// 'dns-txt-token', 'http-token'
+        /// </summary>
+        [JsonProperty(PropertyName = "validation_method")]
+        public string ValidationMethod { get; set; }
+
+        /// <summary>
+        /// Gets or sets a list of email addresses where validation emails
+        /// should be sent for specific DNS names.
+        /// </summary>
+        [JsonProperty(PropertyName = "validation_emails")]
+        public IList<ValidationEmail> ValidationEmails { get; set; }
 
     }
 }

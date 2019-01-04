@@ -31,7 +31,7 @@ namespace Microsoft.Azure.KeyVault.Models
         /// </summary>
         /// <param name="firstName">First name.</param>
         /// <param name="lastName">Last name.</param>
-        /// <param name="emailAddress">Email addresss.</param>
+        /// <param name="emailAddress">Email address.</param>
         /// <param name="phone">Phone number.</param>
         public AdministratorDetails(string firstName = default(string), string lastName = default(string), string emailAddress = default(string), string phone = default(string))
         {
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.KeyVault.Models
         public string LastName { get; set; }
 
         /// <summary>
-        /// Gets or sets email addresss.
+        /// Gets or sets email address.
         /// </summary>
         [JsonProperty(PropertyName = "email")]
         public string EmailAddress { get; set; }

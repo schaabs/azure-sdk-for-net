@@ -38,7 +38,7 @@ namespace Microsoft.Azure.KeyVault.Models
         /// <param name="subjectAlternativeNames">The subject alternative
         /// names.</param>
         /// <param name="keyUsage">List of key usages.</param>
-        /// <param name="validityInMonths">The duration that the ceritifcate is
+        /// <param name="validityInMonths">The duration that the certificate is
         /// valid in months.</param>
         public X509CertificateProperties(string subject = default(string), IList<string> ekus = default(IList<string>), SubjectAlternativeNames subjectAlternativeNames = default(SubjectAlternativeNames), IList<string> keyUsage = default(IList<string>), int? validityInMonths = default(int?))
         {
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.KeyVault.Models
         public IList<string> KeyUsage { get; set; }
 
         /// <summary>
-        /// Gets or sets the duration that the ceritifcate is valid in months.
+        /// Gets or sets the duration that the certificate is valid in months.
         /// </summary>
         [JsonProperty(PropertyName = "validity_months")]
         public int? ValidityInMonths { get; set; }
