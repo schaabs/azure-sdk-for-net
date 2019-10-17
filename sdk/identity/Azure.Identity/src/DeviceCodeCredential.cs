@@ -24,7 +24,7 @@ namespace Azure.Identity
         private readonly ClientDiagnostics _clientDiagnostics;
         private readonly HttpPipeline _pipeline = null;
         private IAccount _account = null;
-        private readonly AzureCredentialOptions _options;
+        private readonly TokenCredentialOptions _options;
         private readonly string _clientId;
         private readonly Func<DeviceCodeInfo, CancellationToken, Task> _deviceCodeCallback;
 
@@ -43,13 +43,13 @@ namespace Azure.Identity
         /// <param name="clientId">The client id of the application to which the users will authenticate</param>
         /// <param name="tenantId">The tenant id of the application to which users will authenticate.  This can be unspecified for multi-tenanted applications.</param>
         /// <param name="options">The client options for the newly created DeviceCodeCredential</param>
-        public DeviceCodeCredential(Func<DeviceCodeInfo, CancellationToken, Task> deviceCodeCallback, string clientId, string tenantId = default,  AzureCredentialOptions options = default)
+        public DeviceCodeCredential(Func<DeviceCodeInfo, CancellationToken, Task> deviceCodeCallback, string clientId, string tenantId = default,  TokenCredentialOptions options = default)
         {
             _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
 
             _deviceCodeCallback = deviceCodeCallback ?? throw new ArgumentNullException(nameof(deviceCodeCallback));
 
-            _options = options ?? new AzureCredentialOptions();
+            _options = options ?? new TokenCredentialOptions();
 
             _pipeline = HttpPipelineBuilder.Build(_options);
 

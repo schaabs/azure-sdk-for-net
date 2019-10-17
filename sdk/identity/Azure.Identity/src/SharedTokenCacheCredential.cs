@@ -96,14 +96,15 @@ namespace Azure.Identity
 
         private async Task<IAccount> GetAccountAsync()
         {
-            IAccount account = null;
-
+            IEnumerable<IAccount> accounts
+            IAccount account;
+            
             try
             {
+                accounts
+
                 if (string.IsNullOrEmpty(_username))
                 {
-                    IEnumerable<IAccount> accounts = await _pubApp.GetAccountsAsync().ConfigureAwait(false);
-
                     account = accounts.Single();
                 }
                 else

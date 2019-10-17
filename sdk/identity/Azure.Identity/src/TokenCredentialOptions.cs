@@ -10,7 +10,7 @@ namespace Azure.Identity
     /// <summary>
     /// Options to configure requests made to Azure Identity Services
     /// </summary>
-    public class AzureCredentialOptions : ClientOptions
+    public class TokenCredentialOptions : ClientOptions
     {
         private static readonly Uri s_defaultAuthorityHost = new Uri("https://login.microsoftonline.com/");
 
@@ -22,7 +22,7 @@ namespace Azure.Identity
         /// <summary>
         /// Creates an instance of AzureCredentialOptions with default settings.
         /// </summary>
-        public AzureCredentialOptions()
+        public TokenCredentialOptions()
         {
             AuthorityHost = s_defaultAuthorityHost;
         }

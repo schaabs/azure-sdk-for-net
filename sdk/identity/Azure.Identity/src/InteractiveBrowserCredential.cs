@@ -18,7 +18,7 @@ namespace Azure.Identity
     {
         private readonly IPublicClientApplication _pubApp = null;
         private IAccount _account = null;
-        private readonly AzureCredentialOptions _options;
+        private readonly TokenCredentialOptions _options;
         private readonly string _clientId;
 
         /// <summary>
@@ -37,11 +37,11 @@ namespace Azure.Identity
         /// <param name="tenantId">The tenant id of the application and the users to authentiacte</param>
         /// TODO: need to link to info on how the application has to be created to authenticate users, for multiple applications
         /// <param name="options">The client options for the newly created DeviceCodeCredential</param>
-        public InteractiveBrowserCredential(string clientId, string tenantId = default, AzureCredentialOptions options = default)
+        public InteractiveBrowserCredential(string clientId, string tenantId = default, TokenCredentialOptions options = default)
         {
             _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
 
-            _options = options ??= new AzureCredentialOptions();
+            _options = options ??= new TokenCredentialOptions();
 
             HttpPipeline pipeline = HttpPipelineBuilder.Build(_options);
 

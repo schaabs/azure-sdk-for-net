@@ -6,7 +6,7 @@ namespace Azure.Identity
     /// <summary>
     /// Options to configure the <see cref="DefaultAzureCredential"/> authentication flow and requests made to Azure Identity services.
     /// </summary>
-    public class DefaultAzureCredentialOptions : AzureCredentialOptions
+    public class DefaultAzureCredentialOptions : TokenCredentialOptions
     {
         /// <summary>
         /// Specifies the preferred authentication account in the case multiple accounts are found.

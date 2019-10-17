@@ -19,7 +19,7 @@ namespace Azure.Identity
     {
         private static readonly Lazy<AadIdentityClient> s_sharedClient = new Lazy<AadIdentityClient>(() => new AadIdentityClient(null));
 
-        private readonly AzureCredentialOptions _options;
+        private readonly TokenCredentialOptions _options;
         private readonly HttpPipeline _pipeline;
         private readonly ClientDiagnostics _clientDiagnostics;
 
@@ -31,9 +31,9 @@ namespace Azure.Identity
         {
         }
 
-        public AadIdentityClient(AzureCredentialOptions options = null)
+        public AadIdentityClient(TokenCredentialOptions options = null)
         {
-            _options = options ?? new AzureCredentialOptions();
+            _options = options ?? new TokenCredentialOptions();
 
             _pipeline = HttpPipelineBuilder.Build(_options);
             _clientDiagnostics = new ClientDiagnostics(_options);
@@ -291,7 +291,7 @@ namespace Azure.Identity
                         break;
 
                     case "expires_in":
-                        expiresOn = DateTime.UtcNow + TimeSpan.FromSeconds(prop.Value.GetInt64());
+                        expiresOn = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(prop.Value.GetInt64());
                         break;
                 }
             }
