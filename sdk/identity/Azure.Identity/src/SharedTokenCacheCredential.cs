@@ -9,19 +9,24 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Azure.Identity
 {
     /// <summary>
     /// Authenticates using tokens in the local cache shared between Microsoft applications.
     /// </summary>
-    public class SharedTokenCacheCredential : TokenCredential
+    public class SharedTokenCacheCredential : TokenCredential, IExtendedTokenCredential
     {
-        private readonly IPublicClientApplication _pubApp = null;
+        private const string MultipleAccountsErrorMessage = "Multiple accounts were discovered in the token cache. Set the AZURE_USERNAME environment variable to the preferred username, or specify it when constructing SharedTokenCacheCredential.";
+
+        private readonly IPublicClientApplication _pubApp;
+        private readonly CredentialPipeline _pipeline;
         private readonly string _username;
-        private readonly Lazy<Task<IAccount>> _account;
+        private readonly Lazy<Task<(IAccount, string)>> _account;
         private readonly MsalCacheReader _cacheReader;
-        private readonly string _clientId;
+
+        private string _errorMessage;
 
         /// <summary>
         /// Creates a new SharedTokenCacheCredential which will authenticate users with the specified application.
@@ -39,19 +44,15 @@ namespace Azure.Identity
         /// <param name="options">The client options for the newly created SharedTokenCacheCredential</param>
         public SharedTokenCacheCredential(string username, TokenCredentialOptions options = default)
         {
-            _clientId = Constants.DeveloperSignOnClientId;
-
-            options ??= new TokenCredentialOptions();
-
             _username = username;
 
-            HttpPipeline pipeline = HttpPipelineBuilder.Build(options);
+            _pipeline = CredentialPipeline.GetInstance(options);
 
-            _pubApp = PublicClientApplicationBuilder.Create(_clientId).WithHttpClientFactory(new HttpPipelineClientFactory(pipeline)).Build();
+            _pubApp = _pipeline.CreateMsalPublicClient(Constants.DeveloperSignOnClientId);
 
             _cacheReader = new MsalCacheReader(_pubApp.UserTokenCache, Constants.SharedTokenCacheFilePath, Constants.SharedTokenCacheAccessRetryCount, Constants.SharedTokenCacheAccessRetryDelay);
 
-            _account = new Lazy<Task<IAccount>>(GetAccountAsync);
+            _account = new Lazy<Task<(IAccount, string)>>(GetAccountAsync);
         }
 
         /// <summary>
@@ -62,7 +63,9 @@ namespace Azure.Identity
         /// <returns>An <see cref="AccessToken"/> which can be used to authenticate service client calls</returns>
         public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken = default)
         {
-            return GetTokenAsync(requestContext, cancellationToken).GetAwaiter().GetResult();
+            (AccessToken token, _) = GetTokenImplAsync(requestContext, cancellationToken).GetAwaiter().GetResult();
+
+            return token;
         }
 
         /// <summary>
@@ -73,43 +76,87 @@ namespace Azure.Identity
         /// <returns>An <see cref="AccessToken"/> which can be used to authenticate service client calls</returns>
         public override async Task<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                IAccount account = await _account.Value.ConfigureAwait(false);
+            (AccessToken token, _) = await GetTokenImplAsync(requestContext, cancellationToken).ConfigureAwait(false);
 
-                if (account != null)
-                {
-                    AuthenticationResult result = await _pubApp.AcquireTokenSilent(requestContext.Scopes, account).ExecuteAsync(cancellationToken).ConfigureAwait(false);
-
-                    return new AccessToken(result.AccessToken, result.ExpiresOn);
-                }
-            }
-            catch (MsalUiRequiredException) { } // account cannot be silently authenticated
-
-            return default;
+            return token;
         }
 
-        private async Task<IAccount> GetAccountAsync()
+        (AccessToken, string) IExtendedTokenCredential.GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken)
         {
-            IEnumerable<IAccount> accounts
-            IAccount account;
-            
+            throw new NotImplementedException();
+        }
+
+        Task<(AccessToken, string)> IExtendedTokenCredential.GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        private async Task<(AccessToken, string)> GetTokenImplAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        {
+            using DiagnosticScope scope = _pipeline.Diagnostics.CreateScope("Azure.Identity.SharedTokenCacheCredential.GetToken");
+
+            scope.Start();
+
             try
             {
-                accounts
+                try
+                {
+                    (IAccount account, string message) = await _account.Value.ConfigureAwait(false);
 
+                    if (account != null)
+                    {
+                        AuthenticationResult result = await _pubApp.AcquireTokenSilent(requestContext.Scopes, account).ExecuteAsync(cancellationToken).ConfigureAwait(false);
+
+                        return (new AccessToken(result.AccessToken, result.ExpiresOn), null);
+                    }
+                }
+                catch (MsalUiRequiredException)
+                {
+                    _errorMessage = $"Token aquisition failed for user {_username}. To fix, reauthenticate through tooling supporting azure developer single sign on.";
+                } // account cannot be silently authenticated
+
+            }
+            catch (Exception e)
+            {
+                scope.Failed(e);
+
+                throw new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, e);
+            }
+
+            return (default, _errorMessage);
+        }
+
+        private async Task<(IAccount, string)> GetAccountAsync()
+        {
+            IAccount account = null;
+
+            IEnumerable<IAccount> accounts = await _pubApp.GetAccountsAsync().ConfigureAwait(false);
+
+            try
+            {
                 if (string.IsNullOrEmpty(_username))
                 {
                     account = accounts.Single();
                 }
                 else
                 {
-                    account = (await _pubApp.GetAccountsAsync().ConfigureAwait(false)).Where(a => a.Username == _username).Single();
+                    account = accounts.Where(a => a.Username == _username).First();
                 }
             }
-            catch (InvalidOperationException) { } // more than on account
+            catch (InvalidOperationException)
+            {
+                if (string.IsNullOrEmpty(_username))
+                {
+                    _errorMessage = $"{MultipleAccountsErrorMessage}\n Discovered Accounts: [ {string.Join(", ", accounts.Select(a => a.Username))} ]";
+                }
+                else
+                {
+                    _errorMessage = $"User account '{_username}' was not found in the shared token cache.\n  Discovered Accounts: [ {string.Join(", ", accounts.Select(a => a.Username))} ]";
+                }
+            }
 
-            return account;
+            return (account, _errorMessage);
         }
+
     }
 }

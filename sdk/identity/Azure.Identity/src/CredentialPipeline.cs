@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 using System;
+using Azure.Core;
+using Azure.Core.Diagnostics;
 using Azure.Core.Pipeline;
 using Microsoft.Identity.Client;
 
@@ -34,6 +36,39 @@ namespace Azure.Identity
         public IConfidentialClientApplication CreateMsalConfidentialClient(string tenantId, string clientId, string clientSecret)
         {
             return ConfidentialClientApplicationBuilder.Create(clientId).WithHttpClientFactory(new HttpPipelineClientFactory(Pipeline)).WithTenantId(tenantId).WithClientSecret(clientSecret).Build();
+        }
+
+        public IPublicClientApplication CreateMsalPublicClient(string clientId, string tenantId = default, string redirectUrl = default)
+        {
+            PublicClientApplicationBuilder pubAppBuilder = PublicClientApplicationBuilder.Create(clientId).WithHttpClientFactory(new HttpPipelineClientFactory(Pipeline));
+
+            if (!string.IsNullOrEmpty(tenantId))
+            {
+                pubAppBuilder = pubAppBuilder.WithTenantId(tenantId);
+            }
+
+            if (!string.IsNullOrEmpty(redirectUrl))
+            {
+                pubAppBuilder = pubAppBuilder.WithRedirectUri(redirectUrl);
+            }
+
+            return pubAppBuilder.Build();
+        }
+
+        public DiagnosticScope CreateGetTokenScope(string fullyQualifiedMethod, TokenRequestContext context)
+        {
+            AzureIdentityEventSource.Singleton.GetToken(fullyQualifiedMethod, context);
+
+            DiagnosticScope scope = Diagnostics.CreateScope("Azure.Identity.UsernamePasswordCredential.GetToken");
+
+            scope.Start();
+
+            return scope;
+        }
+
+        public AuthenticationFailedException CreateAuthenticationFailedException(DiagnosticScope scope, Exception exception)
+        {
+
         }
     }
 }

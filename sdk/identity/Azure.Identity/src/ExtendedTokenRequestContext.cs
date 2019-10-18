@@ -11,7 +11,7 @@ namespace Azure.Identity
         {
             Context = context;
 
-            Errors = errors ?? new List<string>();
+            Errors = errors;
         }
 
         public TokenRequestContext Context { get; }

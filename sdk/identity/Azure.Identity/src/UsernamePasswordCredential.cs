@@ -22,9 +22,7 @@ namespace Azure.Identity
     public class UsernamePasswordCredential : TokenCredential
     {
         private readonly IPublicClientApplication _pubApp = null;
-        private readonly HttpPipeline _pipeline = null;
-        private readonly ClientDiagnostics _clientDiagnostics;
-        private readonly TokenCredentialOptions _options;
+        private readonly CredentialPipeline _pipeline = null;
         private readonly string _username = null;
         private readonly SecureString _password;
 
@@ -66,13 +64,9 @@ namespace Azure.Identity
 
             _password = (password != null) ? password.ToSecureString() : throw new ArgumentNullException(nameof(password));
 
-            _options = options ?? new TokenCredentialOptions();
+            _pipeline = CredentialPipeline.GetInstance(options);
 
-            _pipeline = HttpPipelineBuilder.Build(_options);
-
-            _clientDiagnostics = new ClientDiagnostics(options);
-
-            _pubApp = PublicClientApplicationBuilder.Create(clientId).WithHttpClientFactory(new HttpPipelineClientFactory(_pipeline)).WithTenantId(tenantId).Build();
+            _pubApp = _pipeline.CreateMsalPublicClient(clientId, tenantId);
         }
 
         /// <summary>
@@ -96,7 +90,7 @@ namespace Azure.Identity
         /// <returns>An <see cref="AccessToken"/> which can be used to authenticate service client calls.</returns>
         public override async Task<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken = default)
         {
-            using DiagnosticScope scope = _clientDiagnostics.CreateScope("Azure.Identity.UsernamePasswordCredential.GetToken");
+            using DiagnosticScope scope = _pipeline.Diagnostics.CreateScope("Azure.Identity.UsernamePasswordCredential.GetToken");
 
             scope.Start();
 
@@ -110,7 +104,7 @@ namespace Azure.Identity
             {
                 scope.Failed(e);
 
-                throw;
+                throw new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, e);
             }
         }
     }
