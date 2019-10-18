@@ -128,10 +128,10 @@ namespace Azure.Storage.Files.Tests
                 Protocol = SasProtocol.None,
                 Services = AccountSasServices.Files,
                 ResourceTypes = AccountSasResourceTypes.Container,
-                StartTime = Recording.UtcNow.AddHours(-1),
-                ExpiryTime = Recording.UtcNow.AddHours(+1),
+                StartsOn = Recording.UtcNow.AddHours(-1),
+                ExpiresOn = Recording.UtcNow.AddHours(+1),
                 Permissions = new FileAccountSasPermissions { Create = true, Delete = true }.ToString(),
-                IPRange = new IPRange(IPAddress.None, IPAddress.None)
+                IPRange = new SasIPRange(IPAddress.None, IPAddress.None)
             }.ToSasQueryParameters(sharedKeyCredentials);
 
         public SasQueryParameters GetNewFileServiceSasCredentialsShare(string shareName, StorageSharedKeyCredential sharedKeyCredentials = default)
@@ -139,10 +139,10 @@ namespace Azure.Storage.Files.Tests
             {
                 ShareName = shareName,
                 Protocol = SasProtocol.None,
-                StartTime = Recording.UtcNow.AddHours(-1),
-                ExpiryTime = Recording.UtcNow.AddHours(+1),
+                StartsOn = Recording.UtcNow.AddHours(-1),
+                ExpiresOn = Recording.UtcNow.AddHours(+1),
                 Permissions = new ShareSasPermissions { Read = true, Write = true, List = true, Create = true, Delete = true }.ToString(),
-                IPRange = new IPRange(IPAddress.None, IPAddress.None)
+                IPRange = new SasIPRange(IPAddress.None, IPAddress.None)
             }.ToSasQueryParameters(sharedKeyCredentials ?? GetNewSharedKeyCredentials());
 
         public SasQueryParameters GetNewFileServiceSasCredentialsFile(string shareName, string filePath, StorageSharedKeyCredential sharedKeyCredentials = default)
@@ -151,10 +151,10 @@ namespace Azure.Storage.Files.Tests
                 ShareName = shareName,
                 FilePath = filePath,
                 Protocol = SasProtocol.None,
-                StartTime = Recording.UtcNow.AddHours(-1),
-                ExpiryTime = Recording.UtcNow.AddHours(+1),
+                StartsOn = Recording.UtcNow.AddHours(-1),
+                ExpiresOn = Recording.UtcNow.AddHours(+1),
                 Permissions = new FileSasPermissions { Read = true, Write = true, Create = true, Delete = true }.ToString(),
-                IPRange = new IPRange(IPAddress.None, IPAddress.None)
+                IPRange = new SasIPRange(IPAddress.None, IPAddress.None)
             }.ToSasQueryParameters(sharedKeyCredentials ?? GetNewSharedKeyCredentials());
 
         public SignedIdentifier[] BuildSignedIdentifiers() =>
@@ -164,11 +164,11 @@ namespace Azure.Storage.Files.Tests
                 {
                     Id = GetNewString(),
                     AccessPolicy =
-                        new AccessPolicy
+                        new FileAccessPolicy
                         {
-                            Start =  Recording.UtcNow.AddHours(-1),
-                            Expiry =  Recording.UtcNow.AddHours(1),
-                            Permission = "rw"
+                            StartsOn =  Recording.UtcNow.AddHours(-1),
+                            ExpiresOn =  Recording.UtcNow.AddHours(1),
+                            Permissions = "rw"
                         }
                 }
             };

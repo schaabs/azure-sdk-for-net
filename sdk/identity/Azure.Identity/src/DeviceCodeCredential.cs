@@ -41,9 +41,21 @@ namespace Azure.Identity
         /// </summary>
         /// <param name="deviceCodeCallback">The callback to be executed to display the device code to the user</param>
         /// <param name="clientId">The client id of the application to which the users will authenticate</param>
-        /// <param name="tenantId">The tenant id of the application to which users will authenticate.  This can be unspecified for multi-tenanted applications.</param>
         /// <param name="options">The client options for the newly created DeviceCodeCredential</param>
-        public DeviceCodeCredential(Func<DeviceCodeInfo, CancellationToken, Task> deviceCodeCallback, string clientId, string tenantId = default,  TokenCredentialOptions options = default)
+        public DeviceCodeCredential(Func<DeviceCodeInfo, CancellationToken, Task> deviceCodeCallback, string clientId, TokenCredentialOptions options = default)
+            : this(deviceCodeCallback, null, clientId, options)
+        {
+
+        }
+
+        /// <summary>
+        /// Creates a new DeviceCodeCredential with the specifeid options, which will authenticate users with the specified application.
+        /// </summary>
+        /// <param name="deviceCodeCallback">The callback to be executed to display the device code to the user</param>
+        /// <param name="tenantId">The tenant id of the application to which users will authenticate.  This can be null for multi-tenanted applications.</param>
+        /// <param name="clientId">The client id of the application to which the users will authenticate</param>
+        /// <param name="options">The client options for the newly created DeviceCodeCredential</param>
+        public DeviceCodeCredential(Func<DeviceCodeInfo, CancellationToken, Task> deviceCodeCallback, string tenantId, string clientId,  TokenCredentialOptions options = default)
         {
             _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
 

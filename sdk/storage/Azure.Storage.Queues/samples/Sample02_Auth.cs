@@ -111,7 +111,7 @@ namespace Azure.Storage.Queues.Samples
                 Permissions = new AccountSasPermissions() { Read = true }.ToString(),
 
                 // Access expires in 1 hour!
-                ExpiryTime = DateTimeOffset.UtcNow.AddHours(1)
+                ExpiresOn = DateTimeOffset.UtcNow.AddHours(1)
             };
 
             // Create a SharedKeyCredential that we can use to sign the SAS token
@@ -161,7 +161,7 @@ namespace Azure.Storage.Queues.Samples
                     ActiveDirectoryTenantId,
                     ActiveDirectoryApplicationId,
                     ActiveDirectoryApplicationSecret,
-                    new AzureCredentialOptions() { AuthorityHost = ActiveDirectoryAuthEndpoint });
+                    new TokenCredentialOptions() { AuthorityHost = ActiveDirectoryAuthEndpoint });
 
             // Create a client that can authenticate using our token credential
             QueueServiceClient service = new QueueServiceClient(ActiveDirectoryQueueUri, credential);

@@ -108,7 +108,7 @@ namespace Azure.Identity.Tests
 
             var options = new TokenCredentialOptions() { Transport = mockTransport };
 
-            var cred = InstrumentClient(new DeviceCodeCredential((code, cancelToken) => VerifyDeviceCodeAndCancel(code, expectedCode, cancelSource), ClientId, options: options));
+            var cred = InstrumentClient(new DeviceCodeCredential((code, cancelToken) => VerifyDeviceCodeAndCancel(code, expectedCode, cancelSource), null, ClientId, options: options));
 
             Assert.ThrowsAsync<OperationCanceledException>(async () => await cred.GetTokenAsync(new TokenRequestContext(new string[] { "https://vault.azure.net/.default" }), cancelSource.Token));
         }

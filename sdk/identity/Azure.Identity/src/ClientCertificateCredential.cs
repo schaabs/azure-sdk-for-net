@@ -20,17 +20,17 @@ namespace Azure.Identity
         /// <summary>
         /// Gets the Azure Active Directory tenant (directory) Id of the service principal
         /// </summary>
-        public string TenantId { get; }
+        internal string TenantId { get; }
 
         /// <summary>
         /// Gets the client (application) ID of the service principal
         /// </summary>
-        public string ClientId { get; }
+        internal string ClientId { get; }
 
         /// <summary>
         /// Gets the authentication X509 Certificate of the service principal
         /// </summary>
-        public X509Certificate2 ClientCertificate { get; }
+        internal X509Certificate2 ClientCertificate { get; }
 
         private readonly AadIdentityClient _client;
 

@@ -153,7 +153,9 @@ namespace Azure.Storage.Test.Shared
             => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
                     { "foo", "bar" },
-                    { "meta", "data" }
+                    { "meta", "data" },
+                    { "Capital", "letter" },
+                    { "UPPER", "case" }
                 };
 
         public IPAddress GetIPAddress()
@@ -182,7 +184,7 @@ namespace Azure.Storage.Test.Shared
                 appId,
                 secret,
                 Recording.InstrumentClientOptions(
-                    new AzureCredentialOptions() { AuthorityHost = authorityHost }));
+                    new TokenCredentialOptions() { AuthorityHost = authorityHost }));
 
         public void AssertMetadataEquality(IDictionary<string, string> expected, IDictionary<string, string> actual)
         {
