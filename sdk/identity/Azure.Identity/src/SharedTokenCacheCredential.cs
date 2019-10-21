@@ -2,15 +2,12 @@
 // Licensed under the MIT License.
 
 using Azure.Core;
-using Azure.Core.Pipeline;
 using Microsoft.Identity.Client;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
-using System.Text;
-using Azure.Core.Diagnostics;
 
 namespace Azure.Identity
 {
@@ -68,11 +65,6 @@ namespace Azure.Identity
 
             if (ex != null)
             {
-                if (!(ex is AuthenticationFailedException))
-                {
-                    ex = new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, ex);
-                }
-
                 throw ex;
             }
 
@@ -91,11 +83,6 @@ namespace Azure.Identity
 
             if (ex != null)
             {
-                if (!(ex is AuthenticationFailedException))
-                {
-                    ex = new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, ex);
-                }
-
                 throw ex;
             }
 
@@ -132,12 +119,12 @@ namespace Azure.Identity
                 }
                 else
                 {
-                    scope.Failed(ex);
+                    ex = scope.Failed(ex);
                 }
             }
             catch (MsalUiRequiredException)
             {
-                ex = scope.Failed($"Token aquisition failed for user {_username}. To fix, reauthenticate through tooling supporting azure developer sign on.");
+                ex = scope.Failed(new CredentialUnavailableException($"Token aquisition failed for user {_username}. To fix, reauthenticate through tooling supporting azure developer sign on."));
             }
             catch (Exception e)
             {
@@ -170,11 +157,11 @@ namespace Azure.Identity
             {
                 if (string.IsNullOrEmpty(_username))
                 {
-                    ex = new AuthenticationFailedException($"{MultipleAccountsErrorMessage}\n Discovered Accounts: [ {string.Join(", ", accounts.Select(a => a.Username))} ]");
+                    ex = new CredentialUnavailableException($"{MultipleAccountsErrorMessage}\n Discovered Accounts: [ {string.Join(", ", accounts.Select(a => a.Username))} ]");
                 }
                 else
                 {
-                    ex = new AuthenticationFailedException($"User account '{_username}' was not found in the shared token cache.\n  Discovered Accounts: [ {string.Join(", ", accounts.Select(a => a.Username))} ]");
+                    ex = new CredentialUnavailableException($"User account '{_username}' was not found in the shared token cache.\n  Discovered Accounts: [ {string.Join(", ", accounts.Select(a => a.Username))} ]");
                 }
             }
 

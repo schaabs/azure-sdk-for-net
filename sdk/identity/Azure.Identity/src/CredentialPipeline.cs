@@ -42,13 +42,16 @@ namespace Azure.Identity
 
         public AuthenticationFailedException Failed(Exception ex)
         {
-            var exception = new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, ex);
+            if (!(ex is AuthenticationFailedException))
+            {
+                ex = new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, ex);
+            }
 
-            AzureIdentityEventSource.Singleton.GetTokenFailed(scope.Name, scope.Context, exception);
+            AzureIdentityEventSource.Singleton.GetTokenFailed(Name, Context, ex);
 
-            scope.Scope.Failed(exception);
+            Scope.Failed(ex);
 
-            return exception;
+            return (AuthenticationFailedException)ex;
         }
 
         public void Dispose()
