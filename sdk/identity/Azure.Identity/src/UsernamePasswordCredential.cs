@@ -90,7 +90,7 @@ namespace Azure.Identity
         /// <returns>An <see cref="AccessToken"/> which can be used to authenticate service client calls.</returns>
         public override async Task<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken = default)
         {
-            using DiagnosticScope scope = _pipeline.Diagnostics.CreateScope("Azure.Identity.UsernamePasswordCredential.GetToken");
+            using CredentialDiagnosticScope scope = _pipeline.StartGetTokenScope("Azure.Identity.UsernamePasswordCredential.GetToken", requestContext);
 
             scope.Start();
 
@@ -102,9 +102,7 @@ namespace Azure.Identity
             }
             catch (Exception e)
             {
-                scope.Failed(e);
-
-                throw new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, e);
+                throw scope.Failed(e);
             }
         }
     }
