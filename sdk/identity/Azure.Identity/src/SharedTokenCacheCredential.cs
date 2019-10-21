@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text;
+using Azure.Core.Diagnostics;
 
 namespace Azure.Identity
 {
@@ -23,7 +24,7 @@ namespace Azure.Identity
         private readonly IPublicClientApplication _pubApp;
         private readonly CredentialPipeline _pipeline;
         private readonly string _username;
-        private readonly Lazy<Task<(IAccount, string)>> _account;
+        private readonly Lazy<Task<(IAccount, Exception)>> _account;
         private readonly MsalCacheReader _cacheReader;
 
         private string _errorMessage;
@@ -52,7 +53,7 @@ namespace Azure.Identity
 
             _cacheReader = new MsalCacheReader(_pubApp.UserTokenCache, Constants.SharedTokenCacheFilePath, Constants.SharedTokenCacheAccessRetryCount, Constants.SharedTokenCacheAccessRetryDelay);
 
-            _account = new Lazy<Task<(IAccount, string)>>(GetAccountAsync);
+            _account = new Lazy<Task<(IAccount, Exception)>>(GetAccountAsync);
         }
 
         /// <summary>
@@ -63,7 +64,17 @@ namespace Azure.Identity
         /// <returns>An <see cref="AccessToken"/> which can be used to authenticate service client calls</returns>
         public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken = default)
         {
-            (AccessToken token, _) = GetTokenImplAsync(requestContext, cancellationToken).GetAwaiter().GetResult();
+            (AccessToken token, Exception ex) = GetTokenImplAsync(requestContext, cancellationToken).GetAwaiter().GetResult();
+
+            if (ex != null)
+            {
+                if (!(ex is AuthenticationFailedException))
+                {
+                    ex = new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, ex);
+                }
+
+                throw ex;
+            }
 
             return token;
         }
@@ -76,58 +87,70 @@ namespace Azure.Identity
         /// <returns>An <see cref="AccessToken"/> which can be used to authenticate service client calls</returns>
         public override async Task<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken = default)
         {
-            (AccessToken token, _) = await GetTokenImplAsync(requestContext, cancellationToken).ConfigureAwait(false);
+            (AccessToken token, Exception ex) = await GetTokenImplAsync(requestContext, cancellationToken).ConfigureAwait(false);
+
+            if (ex != null)
+            {
+                if (!(ex is AuthenticationFailedException))
+                {
+                    ex = new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, ex);
+                }
+
+                throw ex;
+            }
 
             return token;
         }
 
-        (AccessToken, string) IExtendedTokenCredential.GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        (AccessToken, Exception) IExtendedTokenCredential.GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            return GetTokenImplAsync(requestContext, cancellationToken).GetAwaiter().GetResult();
         }
 
-        Task<(AccessToken, string)> IExtendedTokenCredential.GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        async Task<(AccessToken, Exception)> IExtendedTokenCredential.GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            return await GetTokenImplAsync(requestContext, cancellationToken).ConfigureAwait(false);
         }
 
-        private async Task<(AccessToken, string)> GetTokenImplAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)
+        private async Task<(AccessToken, Exception)> GetTokenImplAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)
         {
-            using DiagnosticScope scope = _pipeline.Diagnostics.CreateScope("Azure.Identity.SharedTokenCacheCredential.GetToken");
+            IAccount account = null;
 
-            scope.Start();
+            Exception ex = null;
+
+            using CredentialDiagnosticScope scope = _pipeline.StartGetTokenScope("Azure.Identity.SharedTokenCacheCredential.GetToken", requestContext);
 
             try
             {
-                try
+                (account, ex) = await _account.Value.ConfigureAwait(false);
+
+                if (account != null)
                 {
-                    (IAccount account, string message) = await _account.Value.ConfigureAwait(false);
+                    AuthenticationResult result = await _pubApp.AcquireTokenSilent(requestContext.Scopes, account).ExecuteAsync(cancellationToken).ConfigureAwait(false);
 
-                    if (account != null)
-                    {
-                        AuthenticationResult result = await _pubApp.AcquireTokenSilent(requestContext.Scopes, account).ExecuteAsync(cancellationToken).ConfigureAwait(false);
-
-                        return (new AccessToken(result.AccessToken, result.ExpiresOn), null);
-                    }
+                    return (new AccessToken(result.AccessToken, result.ExpiresOn), null);
                 }
-                catch (MsalUiRequiredException)
+                else
                 {
-                    _errorMessage = $"Token aquisition failed for user {_username}. To fix, reauthenticate through tooling supporting azure developer single sign on.";
-                } // account cannot be silently authenticated
-
+                    scope.Failed(ex);
+                }
+            }
+            catch (MsalUiRequiredException)
+            {
+                ex = scope.Failed($"Token aquisition failed for user {_username}. To fix, reauthenticate through tooling supporting azure developer sign on.");
             }
             catch (Exception e)
             {
-                scope.Failed(e);
-
-                throw new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, e);
+                ex = scope.Failed(e);
             }
 
-            return (default, _errorMessage);
+            return (default, ex);
         }
 
-        private async Task<(IAccount, string)> GetAccountAsync()
+        private async Task<(IAccount, Exception)> GetAccountAsync()
         {
+            Exception ex = null;
+
             IAccount account = null;
 
             IEnumerable<IAccount> accounts = await _pubApp.GetAccountsAsync().ConfigureAwait(false);
@@ -147,15 +170,15 @@ namespace Azure.Identity
             {
                 if (string.IsNullOrEmpty(_username))
                 {
-                    _errorMessage = $"{MultipleAccountsErrorMessage}\n Discovered Accounts: [ {string.Join(", ", accounts.Select(a => a.Username))} ]";
+                    ex = new AuthenticationFailedException($"{MultipleAccountsErrorMessage}\n Discovered Accounts: [ {string.Join(", ", accounts.Select(a => a.Username))} ]");
                 }
                 else
                 {
-                    _errorMessage = $"User account '{_username}' was not found in the shared token cache.\n  Discovered Accounts: [ {string.Join(", ", accounts.Select(a => a.Username))} ]";
+                    ex = new AuthenticationFailedException($"User account '{_username}' was not found in the shared token cache.\n  Discovered Accounts: [ {string.Join(", ", accounts.Select(a => a.Username))} ]");
                 }
             }
 
-            return (account, _errorMessage);
+            return (account, ex);
         }
 
     }

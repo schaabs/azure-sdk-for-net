@@ -33,16 +33,11 @@ namespace Azure.Core.Diagnostics
             WriteEvent(GetTokenSucceededEvent, fullyQualifiedMethod, context.Scopes, context.ParentRequestId, ExpiresOn);
         }
 
-        [Event(GetTokenFailedEvent, Level = EventLevel.Warning, Message = "{0} was unable to retrieve an access token [ Scopes: {1} ParentRequestId: {2} ]")]
-        public void GetTokenFailed(string fullyQualifiedMethod, TokenRequestContext context)
+        [Event(GetTokenFailedEvent, Level = EventLevel.Warning, Message = "{0} was unable to retrieve an access token [ Scopes: {1} ParentRequestId: {2} ] {3}")]
+        public void GetTokenFailed(string fullyQualifiedMethod, TokenRequestContext context, Exception ex)
         {
-            WriteEvent(GetTokenFailedEvent, fullyQualifiedMethod, context.Scopes, context.ParentRequestId);
+            WriteEvent(GetTokenFailedEvent, fullyQualifiedMethod, context.Scopes, context.ParentRequestId, ex);
         }
 
-        [Event(GetTokenFailedWithExceptionEvent, Level = EventLevel.Warning, Message = "{0} failed due to an unhandled exception [ Scopes: {1} ParentRequestId: {2} ] \n {3}")]
-        public void CredentialGetTokenFailedWithException(string fullyQualifiedMethod, TokenRequestContext context, string exStr)
-        {
-            WriteEvent(GetTokenFailedWithExceptionEvent, fullyQualifiedMethod, context.Scopes, context.ParentRequestId, exStr);
-        }
     }
 }
