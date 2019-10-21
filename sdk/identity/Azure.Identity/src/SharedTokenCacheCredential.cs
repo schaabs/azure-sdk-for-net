@@ -24,8 +24,6 @@ namespace Azure.Identity
         private readonly Lazy<Task<(IAccount, Exception)>> _account;
         private readonly MsalCacheReader _cacheReader;
 
-        private string _errorMessage;
-
         /// <summary>
         /// Creates a new SharedTokenCacheCredential which will authenticate users with the specified application.
         /// </summary>

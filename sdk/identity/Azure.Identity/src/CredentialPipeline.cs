@@ -9,57 +9,6 @@ using Microsoft.Identity.Client;
 
 namespace Azure.Identity
 {
-   internal readonly struct CredentialDiagnosticScope : IDisposable
-    {
-        private readonly string _name;
-        private readonly DiagnosticScope _scope;
-        private readonly TokenRequestContext _context;
-
-        public CredentialDiagnosticScope(string name, DiagnosticScope scope, TokenRequestContext context)
-        {
-            _name = name;
-
-            _scope = scope;
-
-            _context = context;
-        }
-
-        public string Name { get; }
-        public DiagnosticScope Scope { get; }
-
-        public TokenRequestContext Context { get; }
-
-        public AuthenticationFailedException Failed(string message)
-        {
-            var exception = new AuthenticationFailedException(message);
-
-            AzureIdentityEventSource.Singleton.GetTokenFailed(Name, Context, exception);
-
-            Scope.Failed(exception);
-
-            return exception;
-        }
-
-        public AuthenticationFailedException Failed(Exception ex)
-        {
-            if (!(ex is AuthenticationFailedException))
-            {
-                ex = new AuthenticationFailedException(Constants.AuthenticationUnhandledExceptionMessage, ex);
-            }
-
-            AzureIdentityEventSource.Singleton.GetTokenFailed(Name, Context, ex);
-
-            Scope.Failed(ex);
-
-            return (AuthenticationFailedException)ex;
-        }
-
-        public void Dispose()
-        {
-            Scope.Dispose();
-        }
-    }
-
    internal class CredentialPipeline
     {
         private static readonly Lazy<CredentialPipeline> s_Singleton = new Lazy<CredentialPipeline>(() => new CredentialPipeline(new TokenCredentialOptions()));
@@ -112,7 +61,7 @@ namespace Azure.Identity
 
             CredentialDiagnosticScope scope = new CredentialDiagnosticScope(fullyQualifiedMethod, Diagnostics.CreateScope(fullyQualifiedMethod), context);
 
-            scope.Scope.Start();
+            scope.Start();
 
             return scope;
         }

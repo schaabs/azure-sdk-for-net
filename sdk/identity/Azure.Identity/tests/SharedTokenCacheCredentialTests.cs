@@ -22,7 +22,7 @@ namespace Azure.Identity.Tests
         [Test]
         public async Task ValidateUsernameSpecified()
         {
-            var cred = new SharedTokenCacheCredential(null, "sschaab@microsoft.com");
+            var cred = new SharedTokenCacheCredential("sschaab@microsoft.com");
 
             AccessToken token = await cred.GetTokenAsync(new TokenRequestContext(new string[] { "https://vault.azure.net/.default" }));
 

@@ -48,6 +48,14 @@ namespace Azure.Identity
         private readonly CredentialPipeline _pipeline;
 
         /// <summary>
+        /// Protected constructor for mocking.
+        /// </summary>
+        protected ManagedIdentityCredential()
+        {
+
+        }
+
+        /// <summary>
         /// Creates an instance of the ManagedIdentityCredential capable of authenticating a resource with a managed identity.
         /// </summary>
         /// <param name="clientId">

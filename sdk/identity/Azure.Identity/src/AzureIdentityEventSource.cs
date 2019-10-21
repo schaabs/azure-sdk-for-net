@@ -3,8 +3,10 @@
 
 using System;
 using System.Diagnostics.Tracing;
+using Azure.Core;
+using Azure.Core.Diagnostics;
 
-namespace Azure.Core.Diagnostics
+namespace Azure.Identity
 {
     [EventSource(Name = EventSourceName)]
     internal sealed class AzureIdentityEventSource : EventSource
