@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Azure.Core.Pipeline
@@ -13,13 +14,16 @@ namespace Azure.Core.Pipeline
     /// </summary>
     public class BearerTokenAuthenticationPolicy : HttpPipelinePolicy
     {
+        private readonly object _cv = new object();
         private readonly TokenCredential _credential;
 
         private readonly string[] _scopes;
 
         private string? _headerValue;
 
-        private DateTimeOffset _refreshOn;
+        private bool _renewing = false;
+        private DateTimeOffset _expiresOn;
+        private TimeSpan _refreshBuffer = TimeSpan.FromMinutes(2);
 
         /// <summary>
         /// Creates a new instance of <see cref="BearerTokenAuthenticationPolicy"/> using provided token credential and scope to authenticate for.
@@ -64,14 +68,53 @@ namespace Azure.Core.Pipeline
                 throw new InvalidOperationException("Bearer token authentication is not permitted for non TLS protected (https) endpoints.");
             }
 
-            if (DateTimeOffset.UtcNow >= _refreshOn)
+            bool getToken = false;
+
+            lock (_cv)
+            {
+                while (true)
+                {
+                    if (DateTimeOffset.UtcNow >= (_expiresOn - _refreshBuffer))
+                    {
+                        if (!_renewing)
+                        {
+                            _renewing = true;
+                            getToken = true;
+                            break;
+                        }
+
+                        if (DateTime.UtcNow < _expiresOn)
+                        {
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+
+                    Monitor.Wait(_cv);
+                }
+            }
+
+            if (getToken)
             {
                 AccessToken token = async ?
                         await _credential.GetTokenAsync(new TokenRequestContext(_scopes, message.Request.ClientRequestId), message.CancellationToken).ConfigureAwait(false) :
                         _credential.GetToken(new TokenRequestContext(_scopes, message.Request.ClientRequestId), message.CancellationToken);
 
-                _headerValue = "Bearer " + token.Token;
-                _refreshOn = token.ExpiresOn - TimeSpan.FromMinutes(2);
+                lock (_cv)
+                {
+                    _headerValue = "Bearer " + token.Token;
+
+                    Thread.MemoryBarrier();
+
+                    _expiresOn = token.ExpiresOn;
+
+                    _renewing = false;
+
+                    Monitor.PulseAll(_cv);
+                }
             }
 
             if (_headerValue != null)
