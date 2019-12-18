@@ -16,6 +16,7 @@ namespace Azure.Identity.Tests
     {
         public CloudShellHostLiveTests(bool isAsync) : base(isAsync)
         {
+            Sanitizer = new IdentityRecordedTestSanitizer();
         }
 
         [Test]
