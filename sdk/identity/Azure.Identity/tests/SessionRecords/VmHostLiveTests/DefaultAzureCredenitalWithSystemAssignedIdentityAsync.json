@@ -1,7 +1,7 @@
 {
   "Entries": [
     {
-      "RequestUri": "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01\u0026resource=https%3A%2F%2Fvault.azure.net\u0026client_id=afc83028-b0c7-463f-a9f3-25f08e69270d",
+      "RequestUri": "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01\u0026resource=https%3A%2F%2Fvault.azure.net",
       "RequestMethod": "GET",
       "RequestHeaders": {
         "Metadata": "true",
@@ -9,30 +9,30 @@
           "azsdk-net-Identity/1.2.0-dev.20191218.1\u002Ba7661548ec703f29b42b9e7a223bb54745f72aec",
           "(.NET Core 4.6.27617.05; Linux 5.0.0-1027-azure #29~18.04.1-Ubuntu SMP Mon Nov 25 21:18:57 UTC 2019)"
         ],
-        "x-ms-client-request-id": "4cef72546cd1abd93daff70efbe513a3",
+        "x-ms-client-request-id": "f37cc8e57ff8ad9b6c03fffbb1208b7a",
         "x-ms-return-client-request-id": "true"
       },
       "RequestBody": "U2FuaXRpemVk",
       "StatusCode": 200,
       "ResponseHeaders": {
-        "Content-Length": "1607",
+        "Content-Length": "1563",
         "Content-Type": "application/json; charset=utf-8",
         "Date": "Wed, 18 Dec 2019 10:04:44 GMT",
         "Server": "Microsoft-IIS/10.0"
       },
       "ResponseBody": {
         "access_token": "Sanitized",
-        "client_id": "afc83028-b0c7-463f-a9f3-25f08e69270d",
+        "client_id": "e01dc05f-d1ad-4937-9354-4253a70ede84",
         "expires_in": "28799",
-        "expires_on": "1576692284",
+        "expires_on": "1576692283",
         "ext_expires_in": "28799",
-        "not_before": "1576663184",
+        "not_before": "1576663183",
         "resource": "https://vault.azure.net",
         "token_type": "Bearer"
       }
     },
     {
-      "RequestUri": "https://aiimdsuavault.vault.azure.net/secrets/identitytestsecret/?api-version=7.0",
+      "RequestUri": "https://aiimdssavault.vault.azure.net/secrets/identitytestsecret/?api-version=7.0",
       "RequestMethod": "GET",
       "RequestHeaders": {
         "Accept": "application/json",
@@ -42,7 +42,7 @@
           "azsdk-net-Security.KeyVault.Secrets/4.0.0\u002Bdd83559ce7c958356537d8bb28f7d70b8ed9f3be",
           "(.NET Core 4.6.27617.05; Linux 5.0.0-1027-azure #29~18.04.1-Ubuntu SMP Mon Nov 25 21:18:57 UTC 2019)"
         ],
-        "x-ms-client-request-id": "400f1ba0263e253012318c121aa6038d",
+        "x-ms-client-request-id": "df3c0a3025f84fcead78d47ee685fa95",
         "x-ms-return-client-request-id": "true"
       },
       "RequestBody": null,
@@ -61,16 +61,16 @@
         "x-ms-keyvault-network-info": "addr=51.143.7.172;act_addr_fam=InterNetwork;",
         "x-ms-keyvault-region": "westus",
         "x-ms-keyvault-service-version": "1.1.0.883",
-        "x-ms-request-id": "fbcc9cbd-62f8-40e0-b02f-c4219caf8666",
+        "x-ms-request-id": "03bd93d5-4d00-4588-8377-5ccd8a441831",
         "X-Powered-By": "ASP.NET"
       },
       "ResponseBody": {
         "value": "value",
-        "id": "https://aiimdsuavault.vault.azure.net/secrets/identitytestsecret/7885668381894e55988438d35a1783a9",
+        "id": "https://aiimdssavault.vault.azure.net/secrets/identitytestsecret/7eb9f2488300498b8695d6dc6c6cdf83",
         "attributes": {
           "enabled": true,
-          "created": 1576101980,
-          "updated": 1576101980,
+          "created": 1576100636,
+          "updated": 1576100636,
           "recoveryLevel": "Purgeable"
         },
         "tags": {
@@ -80,9 +80,8 @@
     }
   ],
   "Variables": {
-    "IDENTITYTEST_VMHOST_CLIENTID": "afc83028-b0c7-463f-a9f3-25f08e69270d",
     "IDENTITYTEST_VMHOST_ENABLE": "true",
-    "IDENTITYTEST_VMHOST_USERASSIGNEDVAULT": "https://aiimdsuavault.vault.azure.net/",
-    "RandomSeed": "1829654227"
+    "IDENTITYTEST_VMHOST_SYSTEMASSIGNEDVAULT": "https://aiimdssavault.vault.azure.net/",
+    "RandomSeed": "232290567"
   }
 }
