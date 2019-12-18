@@ -12,9 +12,9 @@ using NUnit.Framework;
 
 namespace Azure.Identity.Tests
 {
-    public class CloudShellHostTests : RecordedTestBase
+    public class CloudShellHostLiveTests : RecordedTestBase
     {
-        public CloudShellHostTests(bool isAsync) : base(isAsync)
+        public CloudShellHostLiveTests(bool isAsync) : base(isAsync)
         {
         }
 
