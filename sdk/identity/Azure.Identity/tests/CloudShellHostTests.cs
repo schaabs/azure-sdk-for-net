@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 using Azure.Core;
 using Azure.Core.Testing;
@@ -10,57 +12,30 @@ using NUnit.Framework;
 
 namespace Azure.Identity.Tests
 {
-    public class VmHostLiveTests : RecordedTestBase
+    public class CloudShellHostTests : RecordedTestBase
     {
-        public VmHostLiveTests(bool isAsync) : base(isAsync)
+        public CloudShellHostTests(bool isAsync) : base(isAsync)
         {
-            Sanitizer = new IdentityRecordedTestSanitizer();
         }
 
-        [OneTimeSetUp]
-        public void ResetManagedIdenityClient()
-        {
-            if (Mode == RecordedTestMode.Playback)
-            {
-                ManagedIdentityClient.ConfigureForImds();
-            }
-        }
-
-        [NonParallelizable]
         [Test]
         public async Task ManagedIdentityCredenitalWithSystemAssignedIdentity()
         {
             AssertTestEnabled();
 
-            var vaultUri = new Uri(Recording.GetVariableFromEnvironment("IDENTITYTEST_VMHOST_SYSTEMASSIGNEDVAULT"));
+            var vaultUri = new Uri(Recording.GetVariableFromEnvironment("IDENTITYTEST_CLOUDSHELLHOST_SYSTEMASSIGNEDVAULT"));
 
             var cred = CreateInstrumentedManagedIdentityCredential();
 
             await AssertCredentialVaultAccess(vaultUri, cred);
         }
 
-        [NonParallelizable]
-        [Test]
-        public async Task ManagedIdentityCredenitalWithUserAssignedIdentity()
-        {
-            AssertTestEnabled();
-
-            var vaultUri = new Uri(Recording.GetVariableFromEnvironment("IDENTITYTEST_VMHOST_USERASSIGNEDVAULT"));
-
-            var clientId = Recording.GetVariableFromEnvironment("IDENTITYTEST_VMHOST_CLIENTID");
-
-            var cred = CreateInstrumentedManagedIdentityCredential(clientId);
-
-            await AssertCredentialVaultAccess(vaultUri, cred);
-        }
-
-        [NonParallelizable]
         [Test]
         public async Task DefaultAzureCredenitalWithSystemAssignedIdentity()
         {
             AssertTestEnabled();
 
-            var vaultUri = new Uri(Recording.GetVariableFromEnvironment("IDENTITYTEST_VMHOST_SYSTEMASSIGNEDVAULT"));
+            var vaultUri = new Uri(Recording.GetVariableFromEnvironment("IDENTITYTEST_CLOUDSHELLHOST_SYSTEMASSIGNEDVAULT"));
 
             var options = new DefaultAzureCredentialOptions() { ExcludeEnvironmentCredential = true, ExcludeSharedTokenCacheCredential = true, ExcludeInteractiveBrowserCredential = true };
 
@@ -69,26 +44,9 @@ namespace Azure.Identity.Tests
             await AssertCredentialVaultAccess(vaultUri, cred);
         }
 
-        [NonParallelizable]
-        [Test]
-        public async Task DefaultAzureCredenitalWithUserAssignedIdentity()
-        {
-            AssertTestEnabled();
-
-            var vaultUri = new Uri(Recording.GetVariableFromEnvironment("IDENTITYTEST_VMHOST_USERASSIGNEDVAULT"));
-
-            var clientId = Recording.GetVariableFromEnvironment("IDENTITYTEST_VMHOST_CLIENTID");
-
-            var options = new DefaultAzureCredentialOptions() { ExcludeEnvironmentCredential = true, ExcludeSharedTokenCacheCredential = true, ExcludeInteractiveBrowserCredential = true, ManagedIdentityClientId = clientId };
-
-            var cred = CreateInstrumentedDefaultAzureCredential(options);
-
-            await AssertCredentialVaultAccess(vaultUri, cred);
-        }
-
         private void AssertTestEnabled()
         {
-            if (string.IsNullOrEmpty(Recording.GetVariableFromEnvironment("IDENTITYTEST_VMHOST_ENABLE")))
+            if (string.IsNullOrEmpty(Recording.GetVariableFromEnvironment("IDENTITYTEST_CLOUDSHELLHOST_ENABLE")))
             {
                 Assert.Ignore();
             }
