@@ -16,6 +16,7 @@ namespace Azure.Identity.Tests
     {
         public CloudShellHostLiveTests(bool isAsync) : base(isAsync)
         {
+            Matcher.ExcludeHeaders.Add("Content-Length");
             Sanitizer = new IdentityRecordedTestSanitizer();
         }
 
