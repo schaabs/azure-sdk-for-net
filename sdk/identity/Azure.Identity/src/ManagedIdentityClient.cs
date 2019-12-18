@@ -117,8 +117,7 @@ namespace Azure.Identity
                         // if MSI_ENDPOINT is NOT set AND the IMDS endpoint is available the MsiType is Imds
                         else if (ImdsAvailable(cancellationToken))
                         {
-                            s_endpoint = s_imdsEndpoint;
-                            s_msiType = MsiType.Imds;
+                            ConfigureForImds();
                         }
                         // if MSI_ENDPOINT is NOT set and IMDS endpoint is not available ManagedIdentity is not available
                         else
@@ -179,8 +178,7 @@ namespace Azure.Identity
                         // if MSI_ENDPOINT is NOT set AND the IMDS endpoint is available the MsiType is Imds
                         else if (await ImdsAvailableAsync(cancellationToken).ConfigureAwait(false))
                         {
-                            s_endpoint = s_imdsEndpoint;
-                            s_msiType = MsiType.Imds;
+                            ConfigureForImds();
                         }
                         // if MSI_ENDPOINT is NOT set and IMDS endpoint is not available ManagedIdentity is not available
                         else
@@ -198,6 +196,13 @@ namespace Azure.Identity
 
             return s_msiType;
         }
+
+        internal static void ConfigureForImds()
+        {
+            s_endpoint = s_imdsEndpoint;
+            s_msiType = MsiType.Imds;
+        }
+
         private Request CreateAuthRequest(MsiType msiType, string[] scopes, string clientId)
         {
             return msiType switch

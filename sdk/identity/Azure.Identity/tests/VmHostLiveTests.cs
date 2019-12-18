@@ -13,23 +13,25 @@ using NUnit.Framework;
 
 namespace Azure.Identity.Tests
 {
-    public class ManagedIdentityCredentialImdsLiveTests : RecordedTestBase
+    public class VmHostLiveTests : RecordedTestBase
     {
-        public ManagedIdentityCredentialImdsLiveTests(bool isAsync) : base(isAsync)
+        public VmHostLiveTests(bool isAsync) : base(isAsync)
         {
             Sanitizer = new IdentityRecordedTestSanitizer();
         }
 
-        [SetUp]
+        [OneTimeSetUp]
         public void ResetManagedIdenityClient()
         {
-            typeof(ManagedIdentityClient).GetField("s_msiType", BindingFlags.NonPublic | BindingFlags.Static).SetValue(null, 0);
-            typeof(ManagedIdentityClient).GetField("s_endpoint", BindingFlags.NonPublic | BindingFlags.Static).SetValue(null, null);
+            if (Mode == RecordedTestMode.Playback)
+            {
+                ManagedIdentityClient.ConfigureForImds();
+            }
         }
 
         [NonParallelizable]
         [Test]
-        public async Task ValidateImdsSystemAssignedIdentity()
+        public async Task ManagedIdentityCredenitalWithSystemAssignedIdentity()
         {
             if (string.IsNullOrEmpty(Recording.GetVariableFromEnvironment("IDENTITYTEST_IMDSTEST_ENABLE")))
             {
@@ -38,7 +40,7 @@ namespace Azure.Identity.Tests
 
             var vaultUri = new Uri(Recording.GetVariableFromEnvironment("IDENTITYTEST_IMDSTEST_SYSTEMASSIGNEDVAULT"));
 
-            var cred = CreateManagedIdentityCredential();
+            var cred = CreateInstrumentedManagedIdentityCredential();
 
             var kvoptions = Recording.InstrumentClientOptions(new SecretClientOptions());
 
@@ -49,10 +51,9 @@ namespace Azure.Identity.Tests
             Assert.IsNotNull(secret);
         }
 
-
         [NonParallelizable]
         [Test]
-        public async Task ValidateImdsUserAssignedIdentity()
+        public async Task ManagedIdentityCredenitalWithUserAssignedIdentity()
         {
             if (string.IsNullOrEmpty(Recording.GetVariableFromEnvironment("IDENTITYTEST_IMDSTEST_ENABLE")))
             {
@@ -63,7 +64,7 @@ namespace Azure.Identity.Tests
 
             var clientId = Recording.GetVariableFromEnvironment("IDENTITYTEST_IMDSTEST_CLIENTID");
 
-            var cred = CreateManagedIdentityCredential(clientId);
+            var cred = CreateInstrumentedManagedIdentityCredential(clientId);
 
             var kvoptions = Recording.InstrumentClientOptions(new SecretClientOptions());
 
@@ -74,16 +75,11 @@ namespace Azure.Identity.Tests
             Assert.IsNotNull(secret);
         }
 
-        private ManagedIdentityCredential CreateManagedIdentityCredential(string clientId = null, TokenCredentialOptions options = null)
+        private ManagedIdentityCredential CreateInstrumentedManagedIdentityCredential(string clientId = null, TokenCredentialOptions options = null)
         {
             options = Recording.InstrumentClientOptions(options ?? new TokenCredentialOptions());
 
-            var pipeline = CredentialPipeline.GetInstance(options);
-
-            // if we're in playback mode we need to mock the ImdsAvailable call since we won't be able to open a connection
-            var client = (Mode == RecordedTestMode.Playback) ? new MockManagedIdentityClient(pipeline) { ImdsAvailableFunc = _ => true } :  new ManagedIdentityClient(pipeline);
-
-            var cred = new ManagedIdentityCredential(clientId, pipeline, client);
+            var cred = new ManagedIdentityCredential(clientId, options);
 
             return cred;
         }
