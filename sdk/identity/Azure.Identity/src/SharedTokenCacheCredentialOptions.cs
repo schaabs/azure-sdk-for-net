@@ -25,11 +25,6 @@ namespace Azure.Identity
         /// </summary>
         public AuthenticationRecord AuthenticationRecord { get; set; }
 
-        /// <summary>
-        /// If set to true the credential will fall back to storing tokens in an unencrypted file if no OS level user encryption is available.
-        /// </summary>
-        public bool AllowUnencryptedCache { get; set; }
-
-        TokenCacheProvider ITokenCacheOptions.CacheProvider => AllowUnencryptedCache ? DefaultTokenCacheProvider.WithUnencryptedFallback : DefaultTokenCacheProvider.Protected;
+        TokenCacheProvider ITokenCacheOptions.CacheProvider => DefaultTokenCacheProvider.WithUnencryptedFallback;
     }
 }
