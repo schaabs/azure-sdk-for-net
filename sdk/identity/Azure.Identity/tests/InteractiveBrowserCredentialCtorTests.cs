@@ -36,8 +36,7 @@ namespace Azure.Identity.Tests
                 TenantId = Guid.NewGuid().ToString(),
                 AuthorityHost = new Uri("https://login.myauthority.com/"),
                 DisableAutomaticAuthentication = true,
-                EnablePersistentCache = true,
-                AllowUnencryptedCache = true,
+                CacheProvider = DefaultTokenCacheProvider.WithUnencryptedFallback,
                 AuthenticationRecord = new AuthenticationRecord()
             };
 
@@ -115,8 +114,7 @@ namespace Azure.Identity.Tests
             Assert.AreEqual(options.TenantId, credential.Client.TenantId);
             Assert.AreEqual(options.AuthorityHost, credential.Pipeline.AuthorityHost);
             Assert.AreEqual(options.DisableAutomaticAuthentication, credential.DisableAutomaticAuthentication);
-            Assert.AreEqual(options.EnablePersistentCache, credential.Client.EnablePersistentCache);
-            Assert.AreEqual(options.AllowUnencryptedCache, credential.Client.AllowUnencryptedCache);
+            Assert.AreEqual(options.CacheProvider, credential.Client.CacheProvider);
             Assert.AreEqual(options.AuthenticationRecord, credential.Record);
         }
 

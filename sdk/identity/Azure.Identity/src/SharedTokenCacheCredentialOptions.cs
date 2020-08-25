@@ -30,6 +30,6 @@ namespace Azure.Identity
         /// </summary>
         public bool AllowUnencryptedCache { get; set; }
 
-        bool ITokenCacheOptions.EnablePersistentCache => true;
+        TokenCacheProvider ITokenCacheOptions.CacheProvider => AllowUnencryptedCache ? DefaultTokenCacheProvider.WithUnencryptedFallback : DefaultTokenCacheProvider.Protected;
     }
 }

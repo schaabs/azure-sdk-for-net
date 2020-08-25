@@ -28,9 +28,7 @@ namespace Azure.Identity
 
             ClientId = clientId;
 
-            EnablePersistentCache = cacheOptions?.EnablePersistentCache ?? false;
-
-            AllowUnencryptedCache = cacheOptions?.AllowUnencryptedCache ?? false;
+            CacheProvider = cacheOptions?.CacheProvider;
 
             _ensureInitAsync = new Lazy<Task>(InitializeAsync);
         }
@@ -39,9 +37,7 @@ namespace Azure.Identity
 
         internal string ClientId { get; }
 
-        internal bool EnablePersistentCache { get; }
-
-        internal bool AllowUnencryptedCache { get; }
+        internal TokenCacheProvider CacheProvider { get; }
 
         protected CredentialPipeline Pipeline { get; }
 
@@ -67,41 +63,9 @@ namespace Azure.Identity
         {
             Client = await CreateClientAsync().ConfigureAwait(false);
 
-            if (EnablePersistentCache)
+            if (CacheProvider != null)
             {
-                MsalCacheHelper cacheHelper;
-
-                StorageCreationProperties storageProperties = new StorageCreationPropertiesBuilder(Constants.DefaultMsalTokenCacheName, Constants.DefaultMsalTokenCacheDirectory, ClientId)
-                    .WithMacKeyChain(Constants.DefaultMsalTokenCacheKeychainService, Constants.DefaultMsalTokenCacheKeychainAccount)
-                    .WithLinuxKeyring(Constants.DefaultMsalTokenCacheKeyringSchema, Constants.DefaultMsalTokenCacheKeyringCollection, Constants.DefaultMsalTokenCacheKeyringLabel, Constants.DefaultMsaltokenCacheKeyringAttribute1, Constants.DefaultMsaltokenCacheKeyringAttribute2)
-                    .Build();
-
-                try
-                {
-                    cacheHelper = await MsalCacheHelper.CreateAsync(storageProperties).ConfigureAwait(false);
-
-                    cacheHelper.VerifyPersistence();
-                }
-                catch (MsalCachePersistenceException)
-                {
-                    if (AllowUnencryptedCache)
-                    {
-                        storageProperties = new StorageCreationPropertiesBuilder(Constants.DefaultMsalTokenCacheName, Constants.DefaultMsalTokenCacheDirectory, ClientId)
-                            .WithMacKeyChain(Constants.DefaultMsalTokenCacheKeychainService, Constants.DefaultMsalTokenCacheKeychainAccount)
-                            .WithLinuxUnprotectedFile()
-                            .Build();
-
-                        cacheHelper = await MsalCacheHelper.CreateAsync(storageProperties).ConfigureAwait(false);
-
-                        cacheHelper.VerifyPersistence();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-
-                cacheHelper.RegisterCache(Client.UserTokenCache);
+                await CacheProvider.RegisterCache(Client.UserTokenCache).ConfigureAwait(false);
             }
         }
     }
