@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensions.Msal;
@@ -11,7 +12,7 @@ namespace Azure.Identity
     internal abstract class MsalClientBase<TClient>
         where TClient : IClientApplicationBase
     {
-        private readonly Lazy<Task> _ensureInitAsync;
+        private readonly AsyncLockWithValue<TClient> _clientAsyncLock;
 
         /// <summary>
         /// For mocking purposes only.
@@ -30,7 +31,7 @@ namespace Azure.Identity
 
             CacheProvider = cacheOptions?.CacheProvider;
 
-            _ensureInitAsync = new Lazy<Task>(InitializeAsync);
+            _clientAsyncLock = new AsyncLockWithValue<TClient>();
         }
 
         internal string TenantId { get; }
@@ -41,32 +42,25 @@ namespace Azure.Identity
 
         protected CredentialPipeline Pipeline { get; }
 
-        protected TClient Client { get; private set; }
+        protected abstract ValueTask<TClient> CreateClientAsync(bool async, CancellationToken cancellationToken);
 
-        protected abstract Task<TClient> CreateClientAsync();
-
-        protected async Task EnsureInitializedAsync(bool async)
+        protected async ValueTask<TClient> GetClientAsync(bool async, CancellationToken cancellationToken)
         {
-            if (async)
+            using var asyncLock = await _clientAsyncLock.GetLockOrValueAsync(async, cancellationToken).ConfigureAwait(false);
+            if (asyncLock.HasValue)
             {
-                await _ensureInitAsync.Value.ConfigureAwait(false);
+                return asyncLock.Value;
             }
-            else
-            {
-#pragma warning disable AZC0102 // Do not use GetAwaiter().GetResult().
-                _ensureInitAsync.Value.GetAwaiter().GetResult();
-#pragma warning restore AZC0102 // Do not use GetAwaiter().GetResult().
-            }
-        }
 
-        private async Task InitializeAsync()
-        {
-            Client = await CreateClientAsync().ConfigureAwait(false);
+            var client = await CreateClientAsync(async, cancellationToken).ConfigureAwait(false);
 
             if (CacheProvider != null)
             {
                 await CacheProvider.RegisterCache(Client.UserTokenCache).ConfigureAwait(false);
             }
+
+            asyncLock.SetValue(client);
+            return client;
         }
     }
 }
