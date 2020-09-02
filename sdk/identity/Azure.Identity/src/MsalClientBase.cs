@@ -12,6 +12,7 @@ namespace Azure.Identity
     internal abstract class MsalClientBase<TClient>
         where TClient : IClientApplicationBase
     {
+
         private readonly AsyncLockWithValue<TClient> _clientAsyncLock;
 
         /// <summary>

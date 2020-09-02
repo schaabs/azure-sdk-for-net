@@ -37,7 +37,8 @@ namespace Azure.Identity.Tests
                 AuthorityHost = new Uri("https://login.myauthority.com/"),
                 DisableAutomaticAuthentication = true,
                 CacheProvider = DefaultTokenCacheProvider.WithUnencryptedFallback,
-                AuthenticationRecord = new AuthenticationRecord()
+                AuthenticationRecord = new AuthenticationRecord(),
+                RedirectUri = new Uri("https://localhost:8080"),
             };
 
             credential = new InteractiveBrowserCredential(options);
@@ -116,6 +117,15 @@ namespace Azure.Identity.Tests
             Assert.AreEqual(options.DisableAutomaticAuthentication, credential.DisableAutomaticAuthentication);
             Assert.AreEqual(options.CacheProvider, credential.Client.CacheProvider);
             Assert.AreEqual(options.AuthenticationRecord, credential.Record);
+
+            if (options.RedirectUri != null)
+            {
+                Assert.AreEqual(options.RedirectUri, new Uri(credential.Client.RedirectUrl));
+            }
+            else
+            {
+                Assert.AreEqual(Constants.DefaultRedirectUrl, credential.Client.RedirectUrl);
+            }
         }
 
     }
