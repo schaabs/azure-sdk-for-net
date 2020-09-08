@@ -23,7 +23,7 @@ namespace Azure.Identity
         /// <param name="bytes">The serialized token cache data to be persisted.</param>
         public abstract Task WriteAsync(byte[] bytes);
 
-        internal virtual Task RegisterCache(ITokenCache tokenCache)
+        internal virtual Task RegisterCache(bool async, ITokenCache tokenCache)
         {
             tokenCache.SetBeforeAccessAsync(OnBeforeAccessAsync);
 

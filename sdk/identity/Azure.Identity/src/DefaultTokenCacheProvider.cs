@@ -57,7 +57,7 @@ namespace Azure.Identity
             throw new NotImplementedException();
         }
 
-        internal override async Task RegisterCache(ITokenCache tokenCache)
+        internal override async Task RegisterCache(bool async, ITokenCache tokenCache)
         {
             MsalCacheHelper cacheHelper;
 
@@ -68,7 +68,7 @@ namespace Azure.Identity
 
             try
             {
-                cacheHelper = await MsalCacheHelper.CreateAsync(storageProperties).ConfigureAwait(false);
+                cacheHelper = await CreateCacheHelper(async, storageProperties).ConfigureAwait(false);
 
                 cacheHelper.VerifyPersistence();
             }
@@ -81,7 +81,7 @@ namespace Azure.Identity
                         .WithLinuxUnprotectedFile()
                         .Build();
 
-                    cacheHelper = await MsalCacheHelper.CreateAsync(storageProperties).ConfigureAwait(false);
+                    cacheHelper = await CreateCacheHelper(async, storageProperties).ConfigureAwait(false);
 
                     cacheHelper.VerifyPersistence();
                 }
@@ -92,6 +92,15 @@ namespace Azure.Identity
             }
 
             cacheHelper.RegisterCache(tokenCache);
+        }
+
+        private static async Task<MsalCacheHelper> CreateCacheHelper(bool async, StorageCreationProperties storageProperties)
+        {
+            return async
+                ? await MsalCacheHelper.CreateAsync(storageProperties).ConfigureAwait(false)
+#pragma warning disable AZC0102 // Do not use GetAwaiter().GetResult(). Use the TaskExtensions.EnsureCompleted() extension method instead.
+                : MsalCacheHelper.CreateAsync(storageProperties).GetAwaiter().GetResult();
+#pragma warning restore AZC0102 // Do not use GetAwaiter().GetResult(). Use the TaskExtensions.EnsureCompleted() extension method instead.
         }
     }
 }

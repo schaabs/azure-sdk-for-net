@@ -57,7 +57,7 @@ namespace Azure.Identity
 
             if (CacheProvider != null)
             {
-                await CacheProvider.RegisterCache(Client.UserTokenCache).ConfigureAwait(false);
+                await CacheProvider.RegisterCache(async, client.UserTokenCache).ConfigureAwait(false);
             }
 
             asyncLock.SetValue(client);
