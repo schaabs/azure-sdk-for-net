@@ -409,7 +409,8 @@ namespace Azure.Core
     {
         private readonly object _dummy;
         private readonly int _dummyPrimitive;
-        public TokenRequestContext(string[] scopes, string? parentRequestId = null) { throw null; }
+        public TokenRequestContext(string[] scopes, string? parentRequestId = null, string? claimsChallenge = null) { throw null; }
+        public string? ClaimsChallenge { get { throw null; } }
         public string? ParentRequestId { get { throw null; } }
         public string[] Scopes { get { throw null; } }
     }
@@ -467,6 +468,8 @@ namespace Azure.Core.Pipeline
     {
         public BearerTokenAuthenticationPolicy(Azure.Core.TokenCredential credential, System.Collections.Generic.IEnumerable<string> scopes) { }
         public BearerTokenAuthenticationPolicy(Azure.Core.TokenCredential credential, string scope) { }
+        protected virtual System.Threading.Tasks.Task OnBeforeRequestAsync(Azure.Core.HttpMessage message, bool async) { throw null; }
+        protected virtual System.Threading.Tasks.Task<bool> OnChallengeAsync(Azure.Core.HttpMessage message, bool async) { throw null; }
         public override void Process(Azure.Core.HttpMessage message, System.ReadOnlyMemory<Azure.Core.Pipeline.HttpPipelinePolicy> pipeline) { }
         public override System.Threading.Tasks.ValueTask ProcessAsync(Azure.Core.HttpMessage message, System.ReadOnlyMemory<Azure.Core.Pipeline.HttpPipelinePolicy> pipeline) { throw null; }
     }

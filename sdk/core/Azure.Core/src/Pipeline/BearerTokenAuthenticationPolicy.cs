@@ -17,7 +17,7 @@ namespace Azure.Core.Pipeline
     public class BearerTokenAuthenticationPolicy : HttpPipelinePolicy
     {
         private readonly AccessTokenCache _accessTokenCache;
-
+        private readonly string[] _scopes;
         /// <summary>
         /// Creates a new instance of <see cref="BearerTokenAuthenticationPolicy"/> using provided token credential and scope to authenticate for.
         /// </summary>
@@ -36,8 +36,8 @@ namespace Azure.Core.Pipeline
         internal BearerTokenAuthenticationPolicy(TokenCredential credential, IEnumerable<string> scopes, TimeSpan tokenRefreshOffset, TimeSpan tokenRefreshRetryDelay) {
             Argument.AssertNotNull(credential, nameof(credential));
             Argument.AssertNotNull(scopes, nameof(scopes));
-
-            _accessTokenCache = new AccessTokenCache(credential, scopes.ToArray(), tokenRefreshOffset, tokenRefreshRetryDelay);
+            _scopes = scopes.ToArray();
+            _accessTokenCache = new AccessTokenCache(credential, tokenRefreshOffset, tokenRefreshRetryDelay, scopes.ToArray());
         }
 
         /// <inheritdoc />
@@ -52,14 +52,28 @@ namespace Azure.Core.Pipeline
             ProcessAsync(message, pipeline, false).EnsureCompleted();
         }
 
+        /// <summary>
+        /// Executed before initially sending the request to authenticate the request.
+        /// </summary>
+        /// <param name="message">The HttpMessage to be authenticated.</param>
+        /// <param name="async">Specifies if the method is being called in an asynchronous context</param>
         protected virtual async Task OnBeforeRequestAsync(HttpMessage message, bool async)
         {
-            AuthenticateRequestAsync(message, new TokenRequestContext()
+            await AuthenticateRequestAsync(message, new TokenRequestContext(_scopes, message.Request.ClientRequestId), async).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Executed in the event a 401 response with a WWW-Authenticate authentication challenge header is received after the initial request.
+        /// </summary>
+        /// <remarks>This implementation handles common authentication challenges such as claims challenges. Service client libraries may derive from this and extend to handle service specific authentication challenges.</remarks>
+        /// <param name="message">The HttpMessage to be authenticated.</param>
+        /// <param name="async">Specifies if the method is being called in an asynchronous context</param>
+        /// <returns>A boolean indicated whether the request should be retried</returns>
         protected virtual async Task<bool> OnChallengeAsync(HttpMessage message, bool async)
         {
-
+            await Task.CompletedTask;
+            // todo: handle
+            return false;
         }
 
         private async Task AuthenticateRequestAsync(HttpMessage message, TokenRequestContext context, bool async)
@@ -76,8 +90,7 @@ namespace Azure.Core.Pipeline
                 throw new InvalidOperationException("Bearer token authentication is not permitted for non TLS protected (https) endpoints.");
             }
 
-            string headerValue = await _accessTokenCache.GetHeaderValueAsync(message, async);
-            message.Request.SetHeader(HttpHeader.Names.Authorization, headerValue);
+            await AuthenticateRequestAsync(message, new TokenRequestContext(_scopes, message.Request.ClientRequestId), async).ConfigureAwait(false);
 
             if (async)
             {
@@ -99,11 +112,12 @@ namespace Azure.Core.Pipeline
             private TokenRequestContext? _currentContext;
             private TaskCompletionSource<HeaderValueInfo>? _infoTcs;
             private TaskCompletionSource<HeaderValueInfo>? _backgroundUpdateTcs;
-            public AccessTokenCache(TokenCredential credential, TimeSpan tokenRefreshOffset, TimeSpan tokenRefreshRetryDelay)
+            public AccessTokenCache(TokenCredential credential, TimeSpan tokenRefreshOffset, TimeSpan tokenRefreshRetryDelay, string[] initialScopes)
             {
                 _credential = credential;
                 _tokenRefreshOffset = tokenRefreshOffset;
                 _tokenRefreshRetryDelay = tokenRefreshRetryDelay;
+                _currentContext = new TokenRequestContext(initialScopes);
             }
 
             public async ValueTask<string> GetHeaderValueAsync(HttpMessage message, TokenRequestContext context, bool async)
@@ -118,13 +132,13 @@ namespace Azure.Core.Pipeline
                     if (backgroundUpdateTcs != null)
                     {
                         HeaderValueInfo info = headerValueTcs.Task.EnsureCompleted();
-                        _ = Task.Run(() => GetHeaderValueFromCredentialInBackgroundAsync(backgroundUpdateTcs, info, message, async));
+                        _ = Task.Run(() => GetHeaderValueFromCredentialInBackgroundAsync(backgroundUpdateTcs, info, context, async));
                         return info.HeaderValue;
                     }
 
                     try
                     {
-                        HeaderValueInfo info = await GetHeaderValueFromCredentialAsync(message, async, message.CancellationToken);
+                        HeaderValueInfo info = await GetHeaderValueFromCredentialAsync(context, async, message.CancellationToken);
                         headerValueTcs.SetResult(info);
                     }
                     catch (OperationCanceledException)
@@ -166,6 +180,7 @@ namespace Azure.Core.Pipeline
                     // Initial state. GetTaskCompletionSources has been called for the first time
                     if (_infoTcs == null || RequestRequiresNewToken(context))
                     {
+                        _currentContext = context;
                         _infoTcs = new TaskCompletionSource<HeaderValueInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
                         _backgroundUpdateTcs = default;
                         return (_infoTcs, _backgroundUpdateTcs, true);
@@ -224,7 +239,7 @@ namespace Azure.Core.Pipeline
                     }
                 }
 
-                if ((context.Claims != null) && (context.Claims != _currentContext.Value.Claims))
+                if ((context.ClaimsChallenge != null) && (context.ClaimsChallenge != _currentContext.Value.ClaimsChallenge))
                 {
                     return true;
                 }
@@ -232,23 +247,23 @@ namespace Azure.Core.Pipeline
                 return false;
             }
 
-            private async ValueTask GetHeaderValueFromCredentialInBackgroundAsync(TaskCompletionSource<HeaderValueInfo> backgroundUpdateTcs, HeaderValueInfo info, HttpMessage httpMessage, bool async)
+            private async ValueTask GetHeaderValueFromCredentialInBackgroundAsync(TaskCompletionSource<HeaderValueInfo> backgroundUpdateTcs, HeaderValueInfo info, TokenRequestContext context, bool async)
             {
                 var cts = new CancellationTokenSource(_tokenRefreshRetryDelay);
                 try
                 {
-                    HeaderValueInfo newInfo = await GetHeaderValueFromCredentialAsync(httpMessage, async, cts.Token);
+                    HeaderValueInfo newInfo = await GetHeaderValueFromCredentialAsync(context, async, cts.Token);
                     backgroundUpdateTcs.SetResult(newInfo);
                 }
                 catch (OperationCanceledException oce) when (cts.IsCancellationRequested)
                 {
                     backgroundUpdateTcs.SetResult(new HeaderValueInfo(info.HeaderValue, info.ExpiresOn, DateTimeOffset.UtcNow));
-                    AzureCoreEventSource.Singleton.BackgroundRefreshFailed(httpMessage.Request.ClientRequestId, oce.ToString());
+                    AzureCoreEventSource.Singleton.BackgroundRefreshFailed(context.ParentRequestId ?? string.Empty, oce.ToString());
                 }
                 catch (Exception e)
                 {
                     backgroundUpdateTcs.SetResult(new HeaderValueInfo(info.HeaderValue, info.ExpiresOn, DateTimeOffset.UtcNow + _tokenRefreshRetryDelay));
-                    AzureCoreEventSource.Singleton.BackgroundRefreshFailed(httpMessage.Request.ClientRequestId, e.ToString());
+                    AzureCoreEventSource.Singleton.BackgroundRefreshFailed(context.ParentRequestId ?? string.Empty, e.ToString());
                 }
                 finally
                 {
@@ -256,12 +271,11 @@ namespace Azure.Core.Pipeline
                 }
             }
 
-            private async ValueTask<HeaderValueInfo> GetHeaderValueFromCredentialAsync(HttpMessage message, bool async, CancellationToken cancellationToken)
+            private async ValueTask<HeaderValueInfo> GetHeaderValueFromCredentialAsync(TokenRequestContext context, bool async, CancellationToken cancellationToken)
             {
-                var requestContext = new TokenRequestContext(_scopes, message.Request.ClientRequestId);
                 AccessToken token = async
-                    ? await _credential.GetTokenAsync(requestContext, cancellationToken).ConfigureAwait(false)
-                    : _credential.GetToken(requestContext, cancellationToken);
+                    ? await _credential.GetTokenAsync(context, cancellationToken).ConfigureAwait(false)
+                    : _credential.GetToken(context, cancellationToken);
 
                 return new HeaderValueInfo("Bearer " + token.Token, token.ExpiresOn, token.ExpiresOn - _tokenRefreshOffset);
             }
