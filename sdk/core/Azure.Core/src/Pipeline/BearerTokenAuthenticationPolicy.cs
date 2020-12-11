@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,6 +52,23 @@ namespace Azure.Core.Pipeline
             ProcessAsync(message, pipeline, false).EnsureCompleted();
         }
 
+        protected virtual async Task OnBeforeRequestAsync(HttpMessage message, bool async)
+        {
+            AuthenticateRequestAsync(message, new TokenRequestContext()
+        }
+
+        protected virtual async Task<bool> OnChallengeAsync(HttpMessage message, bool async)
+        {
+
+        }
+
+        private async Task AuthenticateRequestAsync(HttpMessage message, TokenRequestContext context, bool async)
+        {
+            string headerValue = await _accessTokenCache.GetHeaderValueAsync(message, context, async);
+
+            message.Request.SetHeader(HttpHeader.Names.Authorization, headerValue);
+        }
+
         private async ValueTask ProcessAsync(HttpMessage message, ReadOnlyMemory<HttpPipelinePolicy> pipeline, bool async)
         {
             if (message.Request.Uri.Scheme != Uri.UriSchemeHttps)
@@ -75,26 +93,25 @@ namespace Azure.Core.Pipeline
         {
             private readonly object _syncObj = new object();
             private readonly TokenCredential _credential;
-            private readonly string[] _scopes;
             private readonly TimeSpan _tokenRefreshOffset;
             private readonly TimeSpan _tokenRefreshRetryDelay;
 
+            private TokenRequestContext? _currentContext;
             private TaskCompletionSource<HeaderValueInfo>? _infoTcs;
             private TaskCompletionSource<HeaderValueInfo>? _backgroundUpdateTcs;
-            public AccessTokenCache(TokenCredential credential, string[] scopes, TimeSpan tokenRefreshOffset, TimeSpan tokenRefreshRetryDelay)
+            public AccessTokenCache(TokenCredential credential, TimeSpan tokenRefreshOffset, TimeSpan tokenRefreshRetryDelay)
             {
                 _credential = credential;
-                _scopes = scopes;
                 _tokenRefreshOffset = tokenRefreshOffset;
                 _tokenRefreshRetryDelay = tokenRefreshRetryDelay;
             }
 
-            public async ValueTask<string> GetHeaderValueAsync(HttpMessage message, bool async)
+            public async ValueTask<string> GetHeaderValueAsync(HttpMessage message, TokenRequestContext context, bool async)
             {
                 bool getTokenFromCredential;
                 TaskCompletionSource<HeaderValueInfo> headerValueTcs;
                 TaskCompletionSource<HeaderValueInfo>? backgroundUpdateTcs;
-                (headerValueTcs, backgroundUpdateTcs, getTokenFromCredential) = GetTaskCompletionSources();
+                (headerValueTcs, backgroundUpdateTcs, getTokenFromCredential) = GetTaskCompletionSources(context);
 
                 if (getTokenFromCredential)
                 {
@@ -142,15 +159,16 @@ namespace Azure.Core.Pipeline
                 return headerValueTcs.Task.EnsureCompleted().HeaderValue;
             }
 
-            private (TaskCompletionSource<HeaderValueInfo> tcs, TaskCompletionSource<HeaderValueInfo>? backgroundUpdateTcs, bool getTokenFromCredential) GetTaskCompletionSources()
+            private (TaskCompletionSource<HeaderValueInfo> tcs, TaskCompletionSource<HeaderValueInfo>? backgroundUpdateTcs, bool getTokenFromCredential) GetTaskCompletionSources(TokenRequestContext context)
             {
                 lock (_syncObj)
                 {
                     // Initial state. GetTaskCompletionSources has been called for the first time
-                    if (_infoTcs == null)
+                    if (_infoTcs == null || RequestRequiresNewToken(context))
                     {
                         _infoTcs = new TaskCompletionSource<HeaderValueInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
-                        return (_infoTcs, default, true);
+                        _backgroundUpdateTcs = default;
+                        return (_infoTcs, _backgroundUpdateTcs, true);
                     }
 
                     // Getting new access token is in progress, wait for it
@@ -185,6 +203,33 @@ namespace Azure.Core.Pipeline
                     // Access token is valid, use it
                     return (_infoTcs, default, false);
                 }
+            }
+
+            // must be called under lock (_syncObj)
+            private bool RequestRequiresNewToken(TokenRequestContext context)
+            {
+                if (_currentContext == null)
+                {
+                    return true;
+                }
+
+                if (context.Scopes != null)
+                {
+                    for (int i = 0; i < context.Scopes.Length; i++)
+                    {
+                        if (context.Scopes[i] != _currentContext.Value.Scopes?[i])
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                if ((context.Claims != null) && (context.Claims != _currentContext.Value.Claims))
+                {
+                    return true;
+                }
+
+                return false;
             }
 
             private async ValueTask GetHeaderValueFromCredentialInBackgroundAsync(TaskCompletionSource<HeaderValueInfo> backgroundUpdateTcs, HeaderValueInfo info, HttpMessage httpMessage, bool async)
