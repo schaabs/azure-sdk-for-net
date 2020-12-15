@@ -13,6 +13,18 @@ namespace Azure.Core
         /// </summary>
         /// <param name="scopes">The scopes required for the token.</param>
         /// <param name="parentRequestId">The <see cref="Request.ClientRequestId"/> of the request requiring a token for authentication, if applicable.</param>
+        public TokenRequestContext(string[] scopes, string? parentRequestId)
+        {
+            Scopes = scopes;
+            ParentRequestId = parentRequestId;
+            ClaimsChallenge = default;
+        }
+
+        /// <summary>
+        /// Creates a new TokenRequest with the specified scopes.
+        /// </summary>
+        /// <param name="scopes">The scopes required for the token.</param>
+        /// <param name="parentRequestId">The <see cref="Request.ClientRequestId"/> of the request requiring a token for authentication, if applicable.</param>
         /// <param name="claimsChallenge">A claims challenge returned from a failed authentication or authorization request.</param>
         public TokenRequestContext(string[] scopes, string? parentRequestId = default, string? claimsChallenge = default)
         {

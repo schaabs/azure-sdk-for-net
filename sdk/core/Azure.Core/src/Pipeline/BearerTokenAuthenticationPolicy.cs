@@ -5,6 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.NetworkInformation;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Core.Diagnostics;
@@ -16,6 +20,12 @@ namespace Azure.Core.Pipeline
     /// </summary>
     public class BearerTokenAuthenticationPolicy : HttpPipelinePolicy
     {
+        private const string AuthenticationChallengePattern = @"(\w+) ((?:\w+="".*?""(?:, )?)+)(?:, )?";
+        private const string ChallengeParameterPattern = @"(?:(\w+)=""([^""]*)"")+";
+
+        private static readonly Regex s_AuthenticationChallengeRegex = new Regex(AuthenticationChallengePattern);
+        private static readonly Regex s_ChallengeParameterRegex = new Regex(ChallengeParameterPattern);
+
         private readonly AccessTokenCache _accessTokenCache;
         private readonly string[] _scopes;
         /// <summary>
@@ -71,8 +81,15 @@ namespace Azure.Core.Pipeline
         /// <returns>A boolean indicated whether the request should be retried</returns>
         protected virtual async Task<bool> OnChallengeAsync(HttpMessage message, bool async)
         {
-            await Task.CompletedTask;
-            // todo: handle
+            var claimsChallenge = GetClaimsChallenge(message.Response);
+
+            if (claimsChallenge != null)
+            {
+                await AuthenticateRequestAsync(message, new TokenRequestContext(_scopes, message.Request.ClientRequestId, claimsChallenge), async).ConfigureAwait(false);
+
+                return true;
+            }
+
             return false;
         }
 
@@ -99,6 +116,63 @@ namespace Azure.Core.Pipeline
             else
             {
                 ProcessNext(message, pipeline);
+            }
+
+            if (message.Response.Status == 401 && message.Response.Headers.Contains("WWW-Authenticate"))
+            {
+                if (await OnChallengeAsync(message, async).ConfigureAwait(false))
+                {
+                    if (async)
+                    {
+                        await ProcessNextAsync(message, pipeline).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        ProcessNext(message, pipeline);
+                    }
+                }
+            }
+        }
+
+        private static string? GetClaimsChallenge(Response response)
+        {
+            if (response.Status == 401 && response.Headers.TryGetValue("WWW-Authenticate", out string? headerValue))
+            {
+                foreach (var challenge in ParseChallenges(headerValue))
+                {
+                    if (string.Equals(challenge.Item1, "Bearer", StringComparison.OrdinalIgnoreCase))
+                    {
+                        foreach (var parameter in ParseChallengeParameters(challenge.Item2))
+                        {
+                            if (string.Equals(parameter.Item1, "claims", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return new StringBuilder(parameter.Item2).Append('=', parameter.Item2.Length % 4).ToString();
+                            }
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        internal static IEnumerable<(string, string)> ParseChallenges(string headerValue)
+        {
+            var challengeMatches = s_AuthenticationChallengeRegex.Matches(headerValue);
+
+            for (int i = 0; i < challengeMatches.Count; i++)
+            {
+                yield return (challengeMatches[i].Groups[1].Value, challengeMatches[i].Groups[2].Value);
+            }
+        }
+
+        internal static IEnumerable<(string, string)> ParseChallengeParameters(string challengeValue)
+        {
+            var paramMatches = s_ChallengeParameterRegex.Matches(challengeValue);
+
+            for (int i = 0; i < paramMatches.Count; i++)
+            {
+                yield return (paramMatches[i].Groups[1].Value, paramMatches[i].Groups[2].Value);
             }
         }
 
