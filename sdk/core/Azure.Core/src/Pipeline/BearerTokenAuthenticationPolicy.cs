@@ -146,7 +146,10 @@ namespace Azure.Core.Pipeline
                         {
                             if (string.Equals(parameter.Item1, "claims", StringComparison.OrdinalIgnoreCase))
                             {
-                                return new StringBuilder(parameter.Item2).Append('=', parameter.Item2.Length % 4).ToString();
+                                // currently we are only handling ARM claims challenges which are always b64url encoded, and must be decoded.
+                                // some handling will have to be added if we intend to handle claims challenges from Graph as well since they
+                                // are not encoded.
+                                return Base64Url.DecodeString(parameter.Item2);
                             }
                         }
                     }

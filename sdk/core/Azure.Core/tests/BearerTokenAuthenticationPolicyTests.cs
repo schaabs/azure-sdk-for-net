@@ -689,7 +689,7 @@ namespace Azure.Core.Tests
 
             Assert.AreEqual(response.Status, 200);
 
-            currentClaimChallenge = CaeInsufficientClaimsChallengeValue;
+            currentClaimChallenge = Base64Url.DecodeString(CaeInsufficientClaimsChallengeValue);
 
             response = await SendGetRequest(transport, policy, uri: new Uri("https://example.com"), cancellationToken: default);
 
@@ -697,7 +697,7 @@ namespace Azure.Core.Tests
 
             Assert.AreEqual(response.Status, 200);
 
-            currentClaimChallenge = CaeSessionsRevokedClaimsChallengeValue;
+            currentClaimChallenge = Base64Url.DecodeString(CaeSessionsRevokedClaimsChallengeValue);
 
             response = await SendGetRequest(transport, policy, uri: new Uri("https://example.com"), cancellationToken: default);
 
