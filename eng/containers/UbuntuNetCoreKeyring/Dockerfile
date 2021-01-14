@@ -11,7 +11,8 @@ RUN apt-get update \
     && apt-get install -y \
         libsecret-1-dev \
         dbus-x11 \
-        gnome-keyring
+        gnome-keyring \
+        python3
 
 # Install PowerShell && .net core runtime 2.1
 RUN wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb \
