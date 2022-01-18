@@ -220,6 +220,19 @@ catch (AuthenticationFailedException e)
     Console.WriteLine($"Authentication Failed. {e.Message}");
 }
 ```
+## Finding Relevent Information in Exception Messages
+
+AuthenticationFailedException is thrown when unexpected errors occured when a credential is authenticating. This can include errors recieved from requests to the AAD STS and often contains information helpful to diagnosis. Consider the following AuthenticationFailedException message.
+
+![AuthenticationFailedExceptoin Message Example][authfailed_error_message_example_image]
+
+This error contains several peices of information:
+
+- __Failing Credential Type__: The type of credential which failed to authenticate. This can be helpful when diagnosing issues with chained credential types such as `DefaultAzureCredential` or `ChainedTokenCredential`.
+
+- __STS Error Code and Message__: The error code and message returned from the AAD STS. This can give insight into the specific reason the request failed. For instance in this specific case because the provided client secret is incorrect. More information on STS error codes can be found [here][aad_sts_error_codes].
+
+- __Correlation ID and Timestamp__: The correlation ID and call Timestamp used to identify the request in server side logs. This information can be useful to support engineers when diagnosing unexpected STS failures.
 
 For more details on dealing with errors arising from failed requests to Azure Active Directory, or managed identity endpoints please refer to the Azure Active Directory [documentation on authorization error codes][aad_err_doc].
 
@@ -318,5 +331,6 @@ This project has adopted the [Microsoft Open Source Code of Conduct][code_of_con
 [ref_AzurePowerShellCredential]: https://github.com/Azure/azure-sdk-for-net/blob/main/sdk/identity/Azure.Identity/src/AzurePowerShellCredential.cs
 [ref_VisualStudioCredential]: https://docs.microsoft.com/dotnet/api/azure.identity.visualstudiocredential?view=azure-dotnet
 [ref_VisualStudioCodeCredential]: https://docs.microsoft.com/dotnet/api/azure.identity.visualstudiocodecredential?view=azure-dotnet
+[authfailed_error_message_example_image]: ./images/AuthFailedErrorMessageExample.png
 
 ![Impressions](https://azure-sdk-impressions.azurewebsites.net/api/impressions/azure-sdk-for-net%2Fsdk%2Fidentity%2FAzure.Identity%2FREADME.png)
